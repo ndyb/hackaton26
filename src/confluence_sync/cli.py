@@ -245,6 +245,11 @@ def _adf_to_text(adf: dict | None) -> str:
             lines.append("[bilde]")
             return
 
+        if node_type == "emoji":
+            shortName = node.get("attrs", {}).get("shortName", "")
+            lines.append(shortName or ":?:")
+            return
+
         if node_type == "paragraph":
             for child in node.get("content", []):
                 walk(child, indent=indent)
