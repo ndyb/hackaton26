@@ -9,7 +9,6 @@ from fastapi.responses import FileResponse, JSONResponse
 from pywhispercpp.model import Model
 
 MODEL_PATH = os.environ.get("WHISPER_MODEL", "/models/nb-whisper-medium-q5_0.bin")
-HF_MODELS_PATH = os.environ.get("HF_MODELS", "/models")
 BUILD_SHA = os.environ.get("BUILD_SHA", "dev")
 WHISPER_SAMPLE_RATE = 16000
 MAX_DURATION_S = 120
@@ -79,5 +78,4 @@ async def whisper_worker():
     return FileResponse("static/whisper-worker.js", media_type="application/javascript")
 
 
-app.mount("/hf", StaticFiles(directory=HF_MODELS_PATH), name="hf")
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
