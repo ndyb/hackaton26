@@ -1,30 +1,13 @@
 [project]
-name = "confluence-sync"
+name = "skansen"
 version = "0.1.0"
-description = "Toveis-synkronisering mellom Confluence og lokalt Markdown-filhierarki"
-requires-python = ">=3.11"
+description = "Norsk tale-til-tekst webapp"
+readme = "README.md"
+requires-python = ">=3.12"
 dependencies = [
-    "click>=8.0",
-    "requests>=2.28",
-    "python-frontmatter>=1.0",
-    "markdownify>=0.11",
-    "markdown>=3.4",
-    "beautifulsoup4>=4.12",
-    "pyyaml>=6.0",
-    "rich>=13.0",
-]
-
-[project.scripts]
-confluence-sync = "confluence_sync.cli:main"
-
-[build-system]
-requires = ["setuptools>=68.0"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[dependency-groups]
-dev = [
-    "pytest>=9.0.3",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "pywhispercpp>=1.3",
+    "numpy>=2.0",
+    "python-multipart>=0.0.29",
 ]
