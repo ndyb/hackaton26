@@ -1,8 +1,49 @@
-# Hackaton 2026 — KI-agent for utvikling
+# Hackaton 2026 — Confluence Sync
 
 ## Prosjekt
 
-Vi bygger en KI-agent for utvikling — en intelligent utviklerrobot som kan hjelpe med koding, debugging og code review. Hackatonprosjekt med kort tidsramme: alt skal kunne demoes på 3–5 minutter.
+Vi bygger **Confluence Sync** — et verktøy som synkroniserer Confluence-dokumentasjon til et lokalt Markdown-filhierarki, og gjør det mulig å redigere og pushe endringer tilbake.
+
+### Problemet
+
+Confluence er der dokumentasjonen lever, men det er tungvint å jobbe med:
+- Editoren er treg og begrenset sammenlignet med en skikkelig tekstredaktør
+- Dokumentasjon og kode lever i separate verdener uten kobling
+- Ingen versjonskontroll — du kan ikke diffet, branche eller reviewe dokumentasjonsendringer
+- Utviklere vil jobbe i terminalen og IDE-en sin, ikke i en nettleser
+
+### Løsningen
+
+Et CLI-verktøy som:
+1. **Pull:** Henter et Confluence-space (eller utvalgte sider) og konverterer til et Markdown-filhierarki som speiler sidetreet i Confluence
+2. **Lokal redigering:** Markdown-filene kan redigeres med hvilken som helst editor — VS Code, Vim, eller til og med Claude Code
+3. **Push:** Konverterer endrede Markdown-filer tilbake til Confluence-format og oppdaterer sidene via API-et
+4. **Sync-status:** Viser hvilke sider som er endret lokalt, endret i Confluence, eller i konflikt
+
+### Kjernekonsepter
+
+- **Toveis-synk:** Ikke bare eksport — endringer kan gå begge veier
+- **Confluence-sidetreet → mappestruktur:** Hierarkiet i Confluence blir mapper og filer lokalt (f.eks. `Engineering/Backend/API-design.md`)
+- **Metadata i frontmatter:** Hver Markdown-fil har YAML-frontmatter med Confluence-side-ID, versjonsnummer, sist synkronisert, etc.
+- **Konfliktdeteksjon:** Hvis en side er endret både lokalt og i Confluence siden siste sync, varsles brukeren
+- **Selektiv sync:** Kan synke hele spaces, enkelttrær, eller spesifikke sider
+
+### Confluence API-integrasjon
+
+Bruker [Confluence REST API v2](https://developer.atlassian.com/cloud/confluence/rest/v2/intro/) for:
+- Hente sidetreet og sideinnhold (storage format → Markdown)
+- Oppdatere sider med nytt innhold (Markdown → storage format)
+- Håndtere versjoner og konflikter via versjonsnumre
+- Autentisering via API-token (Atlassian Cloud) eller PAT (Data Center)
+
+### Demo-scenario (3–5 min)
+
+1. `confluence-sync pull --space DEV` — henter hele DEV-spacet som Markdown
+2. Vis filhierarkiet — pent organisert med frontmatter
+3. Rediger en fil i terminalen
+4. `confluence-sync status` — viser endrede filer
+5. `confluence-sync push` — publiserer endringene tilbake til Confluence
+6. Vis oppdatert side i Confluence — endringene er der
 
 ## Koordinator (hovedagent)
 
@@ -154,10 +195,10 @@ Når du delegerer til en subagent, inkluder alltid:
 Eksempel:
 ```
 Agent({
-  description: "Design API for agent-tjenesten",
+  description: "Design Confluence sync-arkitektur",
   subagent_type: "Plan",
   model: "opus",
-  prompt: "Vi bygger en KI-agent for utvikling (hackaton). [kontekst]. Design API-et for [feature]. Lever en konkret anbefaling med endepunkter, request/response-format og datamodell."
+  prompt: "Vi bygger Confluence Sync — et CLI-verktøy som synker Confluence-sider til lokalt Markdown-filhierarki med toveis-sync. [kontekst]. Design [komponent]. Lever en konkret anbefaling med datamodell, filformat og flyt."
 })
 ```
 
