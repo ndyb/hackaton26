@@ -2,11 +2,18 @@ import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 
+import requests as req_lib
+
 from confluence_sync.api import ConfluenceClient
 from confluence_sync.converter import markdown_to_storage, storage_to_markdown
 from confluence_sync.frontmatter import read_frontmatter, write_frontmatter
 from confluence_sync.models import FileStatus, PageMeta, SyncState
 from confluence_sync.tree import build_page_tree, build_file_path
+
+
+def _content_hash(text: str) -> str:
+    normalized = text.strip().replace('\r\n', '\n')
+    return hashlib.sha256(normalized.encode()).hexdigest()
 
 
 def _traverse_tree(
@@ -27,7 +34,7 @@ def _traverse_tree(
         storage_value = page["body"]["storage"]["value"]
         markdown_body = storage_to_markdown(storage_value)
 
-        content_hash = hashlib.sha256(markdown_body.encode()).hexdigest()
+        content_hash = _content_hash(markdown_body)
 
         meta = PageMeta(
             confluence_id=page["id"],
@@ -51,12 +58,18 @@ def _traverse_tree(
     return count
 
 
-def pull_space(space_key: str, output_dir: Path, client: ConfluenceClient) -> int:
+def pull_space(space_key: str, output_dir: Path, client: ConfluenceClient, page_id: str | None = None) -> int:
     """Pull all pages from a Confluence space and save as local Markdown files.
 
+    If page_id is given, only that page and its children are synced.
     Returns the number of pages synced.
     """
-    pages = client.get_space_pages(space_key)
+    if page_id is not None:
+        root_page = client.get_page(page_id)
+        children = client.get_page_children(page_id)
+        pages = [root_page] + children
+    else:
+        pages = client.get_space_pages(space_key)
     tree = build_page_tree(pages)
 
     state = SyncState(
@@ -95,9 +108,12 @@ def push_changes(
         if not filepath.exists():
             continue
 
-        meta, body = read_frontmatter(filepath)
+        try:
+            meta, body = read_frontmatter(filepath)
+        except (KeyError, ValueError):
+            continue
 
-        content_hash = hashlib.sha256(body.encode()).hexdigest()
+        content_hash = _content_hash(body)
 
         if content_hash == meta.content_hash:
             results.append({"file": str(filepath), "title": meta.title, "status": "skipped"})
@@ -109,7 +125,13 @@ def push_changes(
             results.append({"file": str(filepath), "title": meta.title, "status": "dry_run"})
             continue
 
-        client.update_page(meta.confluence_id, meta.title, storage_body, meta.version + 1)
+        try:
+            client.update_page(meta.confluence_id, meta.title, storage_body, meta.version + 1)
+        except req_lib.HTTPError as e:
+            if e.response is not None and e.response.status_code == 409:
+                results.append({"file": str(filepath), "title": meta.title, "status": "conflict"})
+                continue
+            raise
 
         new_version = meta.version + 1
         updated_meta = PageMeta(
@@ -148,7 +170,7 @@ def get_status(output_dir: Path, client: ConfluenceClient | None = None) -> list
             # Skip files that don't have valid frontmatter
             continue
 
-        local_hash = hashlib.sha256(body.encode()).hexdigest()
+        local_hash = _content_hash(body)
         modified_local = local_hash != meta.content_hash
 
         modified_remote = False

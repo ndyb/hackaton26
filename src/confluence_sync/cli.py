@@ -65,7 +65,7 @@ def pull(space, output, page_id):
     console.print(f"Henter sider fra space [bold]{space}[/bold]...")
 
     try:
-        count = pull_space(space, Path(output), client)
+        count = pull_space(space, Path(output), client, page_id=page_id)
     except requests.RequestException as e:
         console.print(f"[red]Feil ved henting fra Confluence:[/red] {e}")
         raise SystemExit(1)

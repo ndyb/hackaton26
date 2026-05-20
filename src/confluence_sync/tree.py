@@ -9,7 +9,7 @@ def sanitize_filename(title: str) -> str:
     result = result.lower()
     result = result.strip('.')
     result = result[:200]
-    return result
+    return result or "untitled"
 
 
 def build_page_tree(pages: list[dict]) -> dict:

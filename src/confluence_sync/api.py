@@ -4,6 +4,7 @@ import requests
 class ConfluenceClient:
     def __init__(self, instance_url: str, email: str, api_token: str):
         self.base_url = f"https://{instance_url}/wiki/api/v2"
+        self.origin = f"https://{instance_url}"
         self.session = requests.Session()
         self.session.auth = (email, api_token)
         self.session.headers.update({
@@ -18,10 +19,10 @@ class ConfluenceClient:
         if not results:
             return []
         space_id = results[0]["id"]
-        return self._get_paginated(
+        page_summaries = self._get_paginated(
             f"{self.base_url}/spaces/{space_id}/pages",
-            params={"body-format": "storage"},
         )
+        return [self.get_page(summary["id"]) for summary in page_summaries]
 
     def get_page(self, page_id: str) -> dict:
         resp = self.session.get(
@@ -42,7 +43,7 @@ class ConfluenceClient:
                 "status": "current",
                 "title": title,
                 "body": {"representation": "storage", "value": body},
-                "version": {"number": version},
+                "version": {"number": version, "message": "Updated via confluence-sync"},
             },
         )
         resp.raise_for_status()
@@ -61,5 +62,8 @@ class ConfluenceClient:
             resp.raise_for_status()
             data = resp.json()
             items.extend(data.get("results", []))
-            next_url = data.get("_links", {}).get("next")
+            next_link = data.get("_links", {}).get("next")
+            if next_link and not next_link.startswith("http"):
+                next_link = self.origin + next_link
+            next_url = next_link
         return items
