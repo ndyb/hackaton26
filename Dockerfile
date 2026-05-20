@@ -17,9 +17,14 @@ RUN uv sync --frozen --no-dev
 
 FROM python:3.12-slim
 
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 COPY --from=builder /app /app
 
+ARG BUILD_SHA=unknown
+ENV BUILD_SHA=${BUILD_SHA}
 ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8765

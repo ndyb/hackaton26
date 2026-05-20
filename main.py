@@ -10,6 +10,7 @@ from pywhispercpp.model import Model
 
 MODEL_PATH = os.environ.get("WHISPER_MODEL", "/models/nb-whisper-medium-q5_0.bin")
 HF_MODELS_PATH = os.environ.get("HF_MODELS", "/models")
+BUILD_SHA = os.environ.get("BUILD_SHA", "dev")
 WHISPER_SAMPLE_RATE = 16000
 MAX_DURATION_S = 120
 MIN_DURATION_S = 0.5
@@ -65,7 +66,7 @@ async def transcribe(
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "model_loaded": whisper_model is not None}
+    return {"status": "ok", "model_loaded": whisper_model is not None, "version": BUILD_SHA}
 
 
 @app.get("/pcm-worklet.js")
