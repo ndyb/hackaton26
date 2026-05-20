@@ -72,6 +72,34 @@ confluence-sync status
 confluence-sync status --check-remote
 ```
 
+### Jira — administrer issues fra terminalen
+
+Jira-kommandoene bruker samme autentisering som Confluence — ingen ekstra oppsett kreves.
+
+```bash
+# List issues i et prosjekt
+confluence-sync jira list --project PROJ
+
+# List med egendefinert JQL
+confluence-sync jira list --project PROJ --jql "status = 'In Progress' AND assignee = currentUser()"
+
+# Vis detaljer for et issue
+confluence-sync jira show PROJ-123
+
+# Opprett nytt issue
+confluence-sync jira create --project PROJ --summary "Fiks login-bug" --type Bug
+confluence-sync jira create --project PROJ --summary "Ny feature" --description "Beskrivelse her"
+
+# Legg til kommentar
+confluence-sync jira comment PROJ-123 "Fikset i commit abc123"
+
+# Endre status
+confluence-sync jira update PROJ-123 --status "In Progress"
+
+# Endre tittel
+confluence-sync jira update PROJ-123 --summary "Ny tittel"
+```
+
 ## Eksempel på generert Markdown-fil
 
 Hver fil har YAML-frontmatter med metadata fra Confluence:
