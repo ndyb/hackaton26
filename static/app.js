@@ -30,7 +30,7 @@ worker.onmessage = (e) => {
     browserReady = true;
     browserStatus.textContent = `Klar (${e.data.device})`;
     browserStatus.className = "status success";
-    browserBadge.textContent = `nb-whisper-small (${e.data.device})`;
+    browserBadge.textContent = `nb-whisper-small-beta (${e.data.device})`;
     loadModelBtn.style.display = "none";
   } else if (type === "result") {
     const ms = e.data.transcribeMs;
@@ -40,6 +40,11 @@ worker.onmessage = (e) => {
     browserStatus.textContent = "Ferdig!";
     browserStatus.className = "status success";
     checkBothDone();
+  } else if (type === "error") {
+    browserStatus.textContent = `Feil: ${e.data.msg}`;
+    browserStatus.className = "status error";
+    loadModelBtn.disabled = false;
+    loadModelBtn.textContent = "Last inn modell";
   }
 };
 
