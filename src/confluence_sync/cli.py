@@ -364,7 +364,7 @@ def jira_create(project, summary, issue_type, description):
     try:
         client = _get_jira_client()
         created = client.create_issue(
-            project=project,
+            project_key=project,
             summary=summary,
             issue_type=issue_type,
             description=description,
