@@ -12,10 +12,10 @@ class JiraClient:
         })
 
     def search_issues(self, jql: str, max_results: int = 50) -> list[dict]:
-        resp = self.session.post(f"{self.base_url}/search", json={
+        resp = self.session.get(f"{self.base_url}/search/jql", params={
             "jql": jql,
             "maxResults": max_results,
-            "fields": ["summary", "status", "assignee", "issuetype", "priority", "created", "updated", "comment"],
+            "fields": "summary,status,assignee,issuetype,priority,created,updated,comment",
         })
         resp.raise_for_status()
         return resp.json()["issues"]
