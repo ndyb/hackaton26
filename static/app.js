@@ -1,5 +1,10 @@
 const $ = (sel) => document.querySelector(sel);
 
+fetch("/api/health").then(r => r.json()).then(d => {
+  const v = d.version || "?";
+  $("#version-footer").textContent = `v${v.slice(0, 7)}`;
+}).catch(() => {});
+
 let audioCtx = null;
 let workletNode = null;
 let mediaStream = null;
