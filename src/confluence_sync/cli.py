@@ -226,17 +226,63 @@ def _get_jira_client():
 def _adf_to_text(adf: dict | None) -> str:
     if not adf:
         return ""
-    texts = []
+    lines: list[str] = []
 
-    def walk(node):
-        if isinstance(node, dict):
-            if node.get("type") == "text":
-                texts.append(node.get("text", ""))
+    def walk(node, list_counter: int | None = None, indent: int = 0):
+        if not isinstance(node, dict):
+            return
+        node_type = node.get("type", "")
+
+        if node_type == "text":
+            lines.append(node.get("text", ""))
+            return
+
+        if node_type == "hardBreak":
+            lines.append("\n")
+            return
+
+        if node_type == "mediaSingle" or node_type == "media":
+            lines.append("[bilde]")
+            return
+
+        if node_type == "paragraph":
             for child in node.get("content", []):
-                walk(child)
+                walk(child, indent=indent)
+            lines.append("\n")
+            return
+
+        if node_type == "heading":
+            level = node.get("attrs", {}).get("level", 1)
+            lines.append("#" * level + " ")
+            for child in node.get("content", []):
+                walk(child, indent=indent)
+            lines.append("\n")
+            return
+
+        if node_type == "orderedList":
+            for i, child in enumerate(node.get("content", []), start=1):
+                walk(child, list_counter=i, indent=indent)
+            return
+
+        if node_type == "bulletList":
+            for child in node.get("content", []):
+                walk(child, list_counter=None, indent=indent)
+            return
+
+        if node_type == "listItem":
+            prefix = f"{list_counter}) " if list_counter is not None else "- "
+            lines.append("  " * indent + prefix)
+            for child in node.get("content", []):
+                walk(child, indent=indent + 1)
+            return
+
+        for child in node.get("content", []):
+            walk(child, list_counter=list_counter, indent=indent)
 
     walk(adf)
-    return " ".join(texts)
+    text = "".join(lines).strip()
+    text = text.replace("\n\n\n", "\n\n")
+    return text
 
 
 @main.group()
