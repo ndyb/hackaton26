@@ -3,6 +3,7 @@ from pathlib import Path
 import click
 import requests
 from rich.console import Console
+from rich.progress import Progress
 
 from confluence_sync.api import ConfluenceClient
 from confluence_sync.auth import load_config, save_config, validate_credentials
@@ -62,10 +63,14 @@ def pull(space, output, page_id):
         api_token=config["api_token"],
     )
 
-    console.print(f"Henter sider fra space [bold]{space}[/bold]...")
-
     try:
-        count = pull_space(space, Path(output), client, page_id=page_id)
+        with Progress(console=console) as progress:
+            task = progress.add_task("Henter sider...", total=None)
+
+            def on_page(title):
+                progress.update(task, advance=1, description=f"Hentet: {title}")
+
+            count = pull_space(space, Path(output), client, page_id=page_id, progress_callback=on_page)
     except requests.RequestException as e:
         console.print(f"[red]Feil ved henting fra Confluence:[/red] {e}")
         raise SystemExit(1)
@@ -84,14 +89,39 @@ def push(dry_run, files):
         console.print(f"[red]Feil:[/red] {e}")
         raise SystemExit(1)
 
+    if not (Path(".") / ".confluence-sync.json").exists():
+        console.print(
+            "[yellow]Ingen synk-data funnet. Kjør 'confluence-sync pull --space <KEY>' først.[/yellow]"
+        )
+        raise SystemExit(1)
+
     client = ConfluenceClient(
         instance_url=config["instance_url"],
         email=config["email"],
         api_token=config["api_token"],
     )
 
+    results = []
     try:
-        results = push_changes(Path("."), client, list(files) or None, dry_run)
+        with Progress(console=console) as progress:
+            task = progress.add_task("Pusher sider...", total=None)
+            pushed_count = 0
+            skipped_count = 0
+
+            def _do_push():
+                nonlocal pushed_count, skipped_count
+                for item in push_changes(Path("."), client, list(files) or None, dry_run):
+                    results.append(item)
+                    if item["status"] == "pushed":
+                        pushed_count += 1
+                        progress.update(task, advance=1, description=f"Pushet: {item['title']} ({pushed_count} pushet, {skipped_count} uendret)")
+                    elif item["status"] == "skipped":
+                        skipped_count += 1
+                        progress.update(task, advance=1, description=f"Uendret: {item['title']} ({pushed_count} pushet, {skipped_count} uendret)")
+                    elif item["status"] == "dry_run":
+                        progress.update(task, advance=1, description=f"Ville pushet: {item['title']}")
+
+            _do_push()
     except requests.RequestException as e:
         console.print(f"[red]Feil ved pushing til Confluence:[/red] {e}")
         raise SystemExit(1)
@@ -120,6 +150,12 @@ def push(dry_run, files):
 def status(verbose, check_remote):
     """Vis synkroniseringsstatus for lokale filer."""
     from rich.table import Table
+
+    if not (Path(".") / ".confluence-sync.json").exists():
+        console.print(
+            "[yellow]Ingen synk-data funnet. Kjør 'confluence-sync pull --space <KEY>' først.[/yellow]"
+        )
+        raise SystemExit(1)
 
     client = None
     if check_remote:

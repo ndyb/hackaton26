@@ -1,4 +1,5 @@
 import hashlib
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -22,6 +23,7 @@ def _traverse_tree(
     space_key: str,
     state: SyncState,
     count: int,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> int:
     """Recursively traverse the page tree, writing markdown files and updating sync state."""
     for node in nodes:
@@ -51,14 +53,17 @@ def _traverse_tree(
         state.pages[page["id"]] = meta.to_dict()
         count += 1
 
+        if progress_callback is not None:
+            progress_callback(page["title"])
+
         if has_children:
             child_parent_path = filepath.parent
-            count = _traverse_tree(children, child_parent_path, space_key, state, count)
+            count = _traverse_tree(children, child_parent_path, space_key, state, count, progress_callback)
 
     return count
 
 
-def pull_space(space_key: str, output_dir: Path, client: ConfluenceClient, page_id: str | None = None) -> int:
+def pull_space(space_key: str, output_dir: Path, client: ConfluenceClient, page_id: str | None = None, progress_callback: Callable[[str], None] | None = None) -> int:
     """Pull all pages from a Confluence space and save as local Markdown files.
 
     If page_id is given, only that page and its children are synced.
@@ -78,7 +83,7 @@ def pull_space(space_key: str, output_dir: Path, client: ConfluenceClient, page_
         last_full_sync=datetime.now(timezone.utc).isoformat(),
     )
 
-    count = _traverse_tree(tree["roots"], output_dir, space_key, state, 0)
+    count = _traverse_tree(tree["roots"], output_dir, space_key, state, 0, progress_callback)
 
     state.save(output_dir)
     return count
