@@ -47,16 +47,3 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-  deploy:
-    needs: build
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger Titan deploy
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.TITAN_DEPLOY_PAT }}
-          repository: ndyb/titan
-          event-type: deploy-stack
-          client-payload: '{"stack": "skansen"}'
