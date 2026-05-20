@@ -72,6 +72,23 @@ confluence-sync status
 confluence-sync status --check-remote
 ```
 
+### Sideadministrasjon
+
+```bash
+# Vis alle sider i et space
+confluence-sync page list --space DEV
+
+# Søk etter sider
+confluence-sync page search --space DEV --query "API design"
+
+# Opprett ny side
+confluence-sync page create --space DEV --title "Ny side"
+confluence-sync page create --space DEV --title "Underside" --parent-id 12345 --body "# Innhold i Markdown"
+
+# Slett en side (krever --confirm)
+confluence-sync page delete 12345 --confirm
+```
+
 ### Jira — administrer issues fra terminalen
 
 Jira-kommandoene bruker samme autentisering som Confluence — ingen ekstra oppsett kreves.
