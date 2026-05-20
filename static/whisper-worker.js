@@ -1,4 +1,9 @@
-import { pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3";
+import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3";
+
+env.allowRemoteModels = true;
+env.allowLocalModels = false;
+
+const MODEL_URL = self.location.origin + "/models/";
 
 let transcriber = null;
 let loading = false;
@@ -14,20 +19,20 @@ async function load() {
   try {
     transcriber = await pipeline(
       "automatic-speech-recognition",
-      "Xenova/nb-whisper-small-beta",
+      MODEL_URL,
       {
         device,
-        dtype: device === "webgpu"
-          ? { encoder_model: "fp32", decoder_model_merged: "q4" }
-          : "q8",
+        dtype: "q8",
         progress_callback: (p) => {
-          if (p.status === "downloading") {
-            const pct = p.total ? Math.round((p.loaded / p.total) * 100) : 0;
-            const mb = p.total ? (p.total / 1e6).toFixed(0) : "?";
-            self.postMessage({ type: "status", msg: `Laster: ${p.file} (${pct}%, ${mb}MB)` });
+          if (p.status === "progress") {
+            const pct = p.progress ? Math.round(p.progress) : 0;
+            self.postMessage({ type: "status", msg: `Laster: ${p.file || "..."} ${pct}%` });
           }
-          if (p.status === "ready") {
-            self.postMessage({ type: "status", msg: `Klargjør ${p.task}...` });
+          if (p.status === "initiate") {
+            self.postMessage({ type: "status", msg: `Henter ${p.file}...` });
+          }
+          if (p.status === "done") {
+            self.postMessage({ type: "status", msg: `${p.file} lastet` });
           }
         },
       }
@@ -48,14 +53,11 @@ self.onmessage = async (e) => {
   }
 
   if (e.data.type === "transcribe") {
-    if (!transcriber) {
-      await load();
-    }
+    if (!transcriber) await load();
     if (!transcriber) return;
 
     const audio = e.data.audio;
     const t0 = performance.now();
-
     self.postMessage({ type: "status", msg: "Transkriberer..." });
 
     const result = await transcriber(audio, {
