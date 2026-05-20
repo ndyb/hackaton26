@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skansen – Norsk tale-til-tekst</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Skansen</h1>
+      <p class="subtitle">Norsk tale-til-tekst</p>
+    </header>
+
+    <main>
+      <div class="record-section">
+        <button id="record-btn" class="record-btn">🎤 Ta opp</button>
+        <p class="hint">Trykk mellomrom for å starte/stoppe</p>
+        <div id="status" class="status info"></div>
+      </div>
+
+      <div class="transcript-section">
+        <div class="transcript-header">
+          <h2>Transkripsjon</h2>
+          <button id="copy-btn" class="copy-btn">Kopier</button>
+        </div>
+        <div id="transcript" class="transcript">Trykk på knappen og snakk norsk...</div>
+      </div>
+
+      <div class="history-section">
+        <h2>Historikk</h2>
+        <div id="history" class="history"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
