@@ -11,25 +11,33 @@ async function load() {
   const device = hasWebGPU ? "webgpu" : "wasm";
   self.postMessage({ type: "status", msg: `Laster modell (${device})...` });
 
-  transcriber = await pipeline(
-    "automatic-speech-recognition",
-    "Xenova/nb-whisper-small",
-    {
-      device,
-      dtype: device === "webgpu"
-        ? { encoder_model: "fp32", decoder_model_merged: "q4" }
-        : "q8",
-      progress_callback: (p) => {
-        if (p.status === "downloading") {
-          const pct = p.total ? Math.round((p.loaded / p.total) * 100) : 0;
-          self.postMessage({ type: "status", msg: `Laster modell: ${p.file} (${pct}%)` });
-        }
-      },
-    }
-  );
+  try {
+    transcriber = await pipeline(
+      "automatic-speech-recognition",
+      "Xenova/nb-whisper-small-beta",
+      {
+        device,
+        dtype: device === "webgpu"
+          ? { encoder_model: "fp32", decoder_model_merged: "q4" }
+          : "q8",
+        progress_callback: (p) => {
+          if (p.status === "downloading") {
+            const pct = p.total ? Math.round((p.loaded / p.total) * 100) : 0;
+            const mb = p.total ? (p.total / 1e6).toFixed(0) : "?";
+            self.postMessage({ type: "status", msg: `Laster: ${p.file} (${pct}%, ${mb}MB)` });
+          }
+          if (p.status === "ready") {
+            self.postMessage({ type: "status", msg: `Klargjør ${p.task}...` });
+          }
+        },
+      }
+    );
 
-  self.postMessage({ type: "status", msg: `Modell klar (${device})` });
-  self.postMessage({ type: "ready", device });
+    self.postMessage({ type: "status", msg: `Modell klar (${device})` });
+    self.postMessage({ type: "ready", device });
+  } catch (err) {
+    self.postMessage({ type: "error", msg: err.message });
+  }
   loading = false;
 }
 
@@ -43,6 +51,7 @@ self.onmessage = async (e) => {
     if (!transcriber) {
       await load();
     }
+    if (!transcriber) return;
 
     const audio = e.data.audio;
     const t0 = performance.now();
