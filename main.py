@@ -72,4 +72,9 @@ async def pcm_worklet():
     return FileResponse("static/pcm-worklet.js", media_type="application/javascript")
 
 
+@app.get("/whisper-worker.js")
+async def whisper_worker():
+    return FileResponse("static/whisper-worker.js", media_type="application/javascript")
+
+
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
