@@ -6,6 +6,23 @@ env.allowRemoteModels = true;
 let transcriber = null;
 let loading = false;
 
+function dedup(text) {
+  const words = text.split(/\s+/);
+  if (words.length < 8) return text;
+  for (let len = 3; len <= 8; len++) {
+    const tail = words.slice(-len).join(" ");
+    let repeats = 0;
+    for (let i = words.length - len; i >= len; i -= len) {
+      if (words.slice(i - len, i).join(" ") === tail) repeats++;
+      else break;
+    }
+    if (repeats >= 3) {
+      return words.slice(0, words.length - repeats * len).join(" ");
+    }
+  }
+  return text;
+}
+
 async function load() {
   if (transcriber || loading) return;
   loading = true;
@@ -60,12 +77,15 @@ self.onmessage = async (e) => {
       task: "transcribe",
       chunk_length_s: 30,
       stride_length_s: 5,
+      max_new_tokens: 128,
+      no_repeat_ngram_size: 4,
     });
 
     const elapsed = performance.now() - t0;
+    const text = dedup(result.text.trim());
     self.postMessage({
       type: "result",
-      text: result.text.trim(),
+      text,
       transcribeMs: elapsed,
     });
   }
