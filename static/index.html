@@ -9,7 +9,7 @@
 <body>
   <header>
     <h1>Skansen</h1>
-    <p class="subtitle">Norsk tale-til-tekst — benchmark</p>
+    <p class="subtitle">Norsk tale-til-tekst</p>
   </header>
 
   <div class="toolbar">
@@ -17,28 +17,16 @@
     <div id="record-status" class="status info"></div>
   </div>
 
-  <div class="panels">
-    <section class="panel">
-      <div class="panel-top">
-        <h2>Server (CPU)</h2>
-        <span class="badge blue">nb-whisper-medium q5</span>
-      </div>
-      <div class="metric" id="server-metric">&mdash;</div>
-      <div id="server-status" class="status info"></div>
-      <div class="transcript" id="server-transcript">Venter på opptak...</div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-top">
-        <h2>Browser</h2>
-        <span class="badge green" id="browser-badge">nb-whisper-small</span>
-      </div>
-      <div class="metric" id="browser-metric">&mdash;</div>
-      <div id="browser-status" class="status info">Trykk knappen under for å laste modell</div>
-      <div class="transcript" id="browser-transcript">Venter på opptak...</div>
-      <button id="load-model-btn" class="load-btn">Last inn modell</button>
-    </section>
-  </div>
+  <section class="panel main-panel">
+    <div class="panel-top">
+      <h2>Transkribering</h2>
+      <span class="badge blue">nb-whisper-medium</span>
+    </div>
+    <div class="metric" id="metric">&mdash;</div>
+    <div id="status" class="status info"></div>
+    <div class="transcript" id="transcript">Trykk Ta opp eller mellomrom for å starte...</div>
+    <button id="tts-btn" class="tts-btn" style="display:none">Les opp</button>
+  </section>
 
   <section class="history-section">
     <h2>Historikk</h2>

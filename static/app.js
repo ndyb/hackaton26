@@ -10,107 +10,16 @@ let workletNode = null;
 let mediaStream = null;
 let chunks = [];
 let recording = false;
-let browserReady = false;
 
 const recordBtn = $("#record-btn");
 const recordStatus = $("#record-status");
-const serverStatus = $("#server-status");
-const serverMetric = $("#server-metric");
-const serverTranscript = $("#server-transcript");
-const browserStatus = $("#browser-status");
-const browserMetric = $("#browser-metric");
-const browserTranscript = $("#browser-transcript");
-const browserBadge = $("#browser-badge");
-const loadModelBtn = $("#load-model-btn");
+const status = $("#status");
+const metric = $("#metric");
+const transcript = $("#transcript");
+const ttsBtn = $("#tts-btn");
 const historyEl = $("#history");
 
-const worker = new Worker("/whisper-worker.js", { type: "module" });
-
-worker.onmessage = (e) => {
-  const { type } = e.data;
-  if (type === "status") {
-    browserStatus.textContent = e.data.msg;
-    browserStatus.className = "status processing";
-  } else if (type === "ready") {
-    browserReady = true;
-    browserStatus.textContent = `Klar (${e.data.device})`;
-    browserStatus.className = "status success";
-    browserBadge.textContent = `nb-whisper-small-beta (${e.data.device})`;
-    loadModelBtn.style.display = "none";
-  } else if (type === "result") {
-    const ms = e.data.transcribeMs;
-    browserTranscript.textContent = e.data.text || "(ingen tale gjenkjent)";
-    browserMetric.textContent = `${(ms / 1000).toFixed(2)}s`;
-    browserMetric.className = "metric done";
-    browserStatus.textContent = "Ferdig!";
-    browserStatus.className = "status success";
-    checkBothDone();
-  } else if (type === "error") {
-    browserStatus.textContent = `Feil: ${e.data.msg}`;
-    browserStatus.className = "status error";
-    loadModelBtn.disabled = false;
-    loadModelBtn.textContent = "Last inn modell";
-  }
-};
-
-loadModelBtn.addEventListener("click", () => {
-  loadModelBtn.disabled = true;
-  loadModelBtn.textContent = "Laster...";
-  worker.postMessage({ type: "load" });
-});
-
-let pendingResults = { server: null, browser: null };
-let recordingStopTime = null;
 let audioDuration = 0;
-
-function checkBothDone() {
-  const serverDone = serverMetric.classList.contains("done");
-  const browserDone = browserMetric.classList.contains("done") || !browserReady;
-
-  if (serverDone && browserDone) {
-    const sMs = parseMetric(serverMetric.textContent);
-    const bMs = browserReady ? parseMetric(browserMetric.textContent) : null;
-    addToHistory(
-      serverTranscript.textContent,
-      browserReady ? browserTranscript.textContent : null,
-      audioDuration,
-      sMs,
-      bMs
-    );
-  }
-}
-
-function parseMetric(text) {
-  const m = text.match(/([\d.]+)s/);
-  return m ? parseFloat(m[1]) * 1000 : 0;
-}
-
-function addToHistory(serverText, browserText, duration, serverMs, browserMs) {
-  const entry = document.createElement("div");
-  entry.className = "history-entry";
-  const time = new Date().toLocaleTimeString("nb-NO");
-  const dur = duration.toFixed(1);
-  const sTime = (serverMs / 1000).toFixed(2);
-  const bTime = browserMs !== null ? (browserMs / 1000).toFixed(2) : "—";
-  const winner = browserMs !== null
-    ? (serverMs < browserMs ? "server" : "browser")
-    : "server";
-
-  entry.innerHTML = `
-    <div class="history-meta">
-      <span class="time">${time}</span>
-      <span class="duration">Opptak: ${dur}s</span>
-    </div>
-    <div class="history-times">
-      <span class="${winner === 'server' ? 'winner' : ''}">Server: ${sTime}s</span>
-      <span class="${winner === 'browser' ? 'winner' : ''}">Browser: ${bTime}s</span>
-    </div>
-    <div class="history-texts">
-      <p><strong>S:</strong> ${serverText}</p>
-      ${browserText ? `<p><strong>B:</strong> ${browserText}</p>` : ""}
-    </div>`;
-  historyEl.prepend(entry);
-}
 
 async function startRecording() {
   try {
@@ -141,21 +50,17 @@ async function startRecording() {
   recordStatus.textContent = "Tar opp...";
   recordStatus.className = "status recording";
 
-  serverMetric.textContent = "";
-  serverMetric.className = "metric";
-  browserMetric.textContent = "";
-  browserMetric.className = "metric";
-  serverTranscript.textContent = "Venter...";
-  browserTranscript.textContent = "Venter...";
-  serverStatus.textContent = "";
-  if (browserReady) browserStatus.textContent = "";
+  metric.textContent = "";
+  metric.className = "metric";
+  status.textContent = "";
+  transcript.textContent = "Venter...";
+  ttsBtn.style.display = "none";
 }
 
 async function stopRecording() {
   recording = false;
   recordBtn.textContent = "Ta opp";
   recordBtn.classList.remove("recording");
-  recordingStopTime = performance.now();
 
   if (workletNode) { workletNode.disconnect(); workletNode = null; }
   if (mediaStream) { mediaStream.getTracks().forEach((t) => t.stop()); mediaStream = null; }
@@ -180,12 +85,11 @@ async function stopRecording() {
   recordStatus.className = "status processing";
 
   transcribeServer(pcm, sampleRate);
-  if (browserReady) transcribeBrowser(pcm);
 }
 
 async function transcribeServer(pcm, sampleRate) {
-  serverStatus.textContent = "Transkriberer...";
-  serverStatus.className = "status processing";
+  status.textContent = "Transkriberer...";
+  status.className = "status processing";
   recordBtn.disabled = true;
 
   const t0 = performance.now();
@@ -203,27 +107,94 @@ async function transcribeServer(pcm, sampleRate) {
     const data = await resp.json();
     const elapsed = performance.now() - t0;
 
-    serverTranscript.textContent = data.text || "(ingen tale gjenkjent)";
-    serverMetric.textContent = `${(elapsed / 1000).toFixed(2)}s`;
-    serverMetric.className = "metric done";
-    serverStatus.textContent = "Ferdig!";
-    serverStatus.className = "status success";
+    const text = data.text || "(ingen tale gjenkjent)";
+    transcript.textContent = text;
+    metric.textContent = `${(elapsed / 1000).toFixed(2)}s`;
+    metric.className = "metric done";
+    status.textContent = "Ferdig!";
+    status.className = "status success";
+    recordStatus.textContent = `Opptak: ${audioDuration.toFixed(1)}s`;
+    recordStatus.className = "status info";
+
+    if (data.text) {
+      ttsBtn.style.display = "block";
+    }
+
+    addToHistory(text, audioDuration, elapsed);
   } catch (e) {
-    serverStatus.textContent = `Feil: ${e.message}`;
-    serverStatus.className = "status error";
-    serverMetric.textContent = "feilet";
-    serverMetric.className = "metric done";
+    status.textContent = `Feil: ${e.message}`;
+    status.className = "status error";
+    metric.textContent = "feilet";
+    metric.className = "metric done";
   } finally {
     recordBtn.disabled = false;
-    checkBothDone();
   }
 }
 
-function transcribeBrowser(pcm) {
-  browserStatus.textContent = "Transkriberer...";
-  browserStatus.className = "status processing";
-  worker.postMessage({ type: "transcribe", audio: pcm }, [pcm.buffer]);
+function addToHistory(text, duration, elapsedMs) {
+  const entry = document.createElement("div");
+  entry.className = "history-entry";
+  const time = new Date().toLocaleTimeString("nb-NO");
+  entry.innerHTML = `
+    <div class="history-meta">
+      <span>${time}</span>
+      <span>Opptak: ${duration.toFixed(1)}s</span>
+      <span>Tid: ${(elapsedMs / 1000).toFixed(2)}s</span>
+    </div>
+    <div class="history-text">${escapeHtml(text)}</div>`;
+  historyEl.prepend(entry);
 }
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+let ttsPlaying = false;
+
+ttsBtn.addEventListener("click", async () => {
+  if (ttsPlaying) return;
+  const text = transcript.textContent;
+  if (!text || text === "(ingen tale gjenkjent)") return;
+
+  ttsBtn.textContent = "Leser opp...";
+  ttsBtn.disabled = true;
+  ttsPlaying = true;
+
+  try {
+    const formData = new FormData();
+    formData.append("text", text);
+    formData.append("speed", "1.0");
+    const resp = await fetch("/api/tts", { method: "POST", body: formData });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+      throw new Error(err.detail || "TTS feilet");
+    }
+    const wavBlob = await resp.blob();
+    const url = URL.createObjectURL(wavBlob);
+    const audio = new Audio(url);
+    audio.onended = () => {
+      URL.revokeObjectURL(url);
+      ttsBtn.textContent = "Les opp";
+      ttsBtn.disabled = false;
+      ttsPlaying = false;
+    };
+    audio.onerror = () => {
+      URL.revokeObjectURL(url);
+      ttsBtn.textContent = "Les opp";
+      ttsBtn.disabled = false;
+      ttsPlaying = false;
+    };
+    audio.play();
+  } catch (e) {
+    status.textContent = `TTS feil: ${e.message}`;
+    status.className = "status error";
+    ttsBtn.textContent = "Les opp";
+    ttsBtn.disabled = false;
+    ttsPlaying = false;
+  }
+});
 
 recordBtn.addEventListener("click", () => {
   if (recording) stopRecording(); else startRecording();
