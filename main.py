@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
     global whisper_model
     print(f"Laster Whisper-modell fra {MODEL_PATH}...")
     t0 = time.time()
-    whisper_model = Model(MODEL_PATH, n_threads=N_THREADS, language="no")
+    whisper_model = Model(MODEL_PATH, params_sampling_strategy=1, n_threads=N_THREADS, language="no")
     print(f"Modell lastet på {time.time() - t0:.1f}s")
     yield
     whisper_model = None
@@ -61,6 +61,7 @@ async def transcribe(
     segments = whisper_model.transcribe(
         samples,
         max_tokens=128,
+        no_context=True,
         no_speech_thold=0.6,
         entropy_thold=2.6,
         logprob_thold=-1.0,
