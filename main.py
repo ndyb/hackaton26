@@ -10,6 +10,7 @@ from pywhispercpp.model import Model
 
 MODEL_PATH = os.environ.get("WHISPER_MODEL", "/models/nb-whisper-medium-q5_0.bin")
 BUILD_SHA = os.environ.get("BUILD_SHA", "dev")
+N_THREADS = int(os.environ.get("WHISPER_THREADS", "4"))
 WHISPER_SAMPLE_RATE = 16000
 MAX_DURATION_S = 120
 MIN_DURATION_S = 0.5
@@ -22,7 +23,7 @@ async def lifespan(app: FastAPI):
     global whisper_model
     print(f"Laster Whisper-modell fra {MODEL_PATH}...")
     t0 = time.time()
-    whisper_model = Model(MODEL_PATH, n_threads=4, language="no")
+    whisper_model = Model(MODEL_PATH, n_threads=N_THREADS, language="no")
     print(f"Modell lastet på {time.time() - t0:.1f}s")
     yield
     whisper_model = None
@@ -57,7 +58,14 @@ async def transcribe(
         frac = (indices - left).astype(np.float32)
         samples = samples[left] * (1 - frac) + samples[right] * frac
 
-    segments = whisper_model.transcribe(samples)
+    segments = whisper_model.transcribe(
+        samples,
+        max_tokens=128,
+        no_speech_thold=0.6,
+        entropy_thold=2.6,
+        logprob_thold=-1.0,
+        suppress_blank=True,
+    )
     text = " ".join(seg.text.strip() for seg in segments if seg.text.strip())
 
     return JSONResponse({"text": text, "duration": duration})
